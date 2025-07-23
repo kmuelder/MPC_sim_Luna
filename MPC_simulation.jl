@@ -37,7 +37,7 @@ using PyPlot
 
 # ----------------- SET OVERALL SIMULATION OPTIONS -----------------
     use_FROG = false             # whether to use a gaussian or a FROG reconstructed pulse from data as the input    
-    use_mirr_data = false        # whether to include the MPC mirror reflectivity and dispersion from given data
+    use_mirr_data = true        # whether to include the MPC mirror reflectivity and dispersion from given data
     use_taylor_disp = false     # whether to account for the MPC mirror dispersion via a Taylor expansion with coefficients defined below
     
     nl_mode_matching = false    # whether to adjust the MPC modematching to nonlinear focusing
@@ -57,27 +57,27 @@ using PyPlot
 # ----------------- SET PHYSICAL PARAMETERS -----------------
 
     # MPC PARAMETERS
-    Nrt = 5                        # number of round trips
-    Npass = 10 #2*Nrt                # number of passes
+    Nrt = 15                        # number of round trips
+    Npass = 2*Nrt                # number of passes
     
-    R = 300e-3 #200e-3                      # mirror radius of curvature [m]
+    R = 200e-3 #200e-3                      # mirror radius of curvature [m]
     k = Nrt-2                       # for k->Nrt MPC operation is closest to the stability edge and wm is maximized, reducing mirror damage 
-    L = 551e-3 #R*(1-cos(pi*k/Nrt))         # MPC cell length [m] (see Anne-Lise Viotti, Multi-pass cells for post-compression of ultrashort laser pulses, 2022, https://doi.org/10.1364/OPTICA.449225)
+    L = R*(1-cos(pi*k/Nrt)) #551e-3 #        # MPC cell length [m] (see Anne-Lise Viotti, Multi-pass cells for post-compression of ultrashort laser pulses, 2022, https://doi.org/10.1364/OPTICA.449225)
     C = L/R
 
     mtype = :spherical              # mirror type, either :spherical or :parabolic
     ϕm1 = [0,0,0,0]                 # mirror 1 dispersion expressed as a taylor expansion
     ϕm2 = [0,0,0,0]                 # mirror 2 dispersion expressed as a taylor expansion
     
-    pres = 0.5 #1.5 #10e-10 #1.5    # gas pressure [bar]
-    gas = :Xe #:Kr                       # gas type
+    pres = 1.5 #10e-10 #0.5 #1.5 #10e-10 #1.5    # gas pressure [bar]
+    gas = :Kr #:Xe #:Kr                       # gas type
     ion = true                     # if true: enable ionisation response, if false: disable ionisation 
     ion_model="PPT"                 # set to "ADK" or "PPT"; "ADK" is less accurate at low intensities but faster; "PPT" may crash at very high intensities
 
     # PULSE PARAMETERS
     λ0 = 1030e-9        # central wavelength [m]
-    τ = 350e-15 #150e-15         # pulse duration [s]; ignored if FROG spectrum is used
-    E_pulse = 200e-6 #250e-6    # pulse energy [J]
+    τ = 150e-15 #350e-15 #150e-15         # pulse duration [s]; ignored if FROG spectrum is used
+    E_pulse = 250e-6 # 200e-6 #250e-6    # pulse energy [J]
     #w0 = 150e-6         # beam waist at focus [m]      # instead calculated later
     # M2 = 1.0           # beam quality                 # not yet implemented; how would you do that?
     N0, n0, n2 = Tools.getN0n0n2(PhysData.wlfreq(λ0), gas; P=pres, T=PhysData.roomtemp)        # gas number density, linear and nonlinear refractive index [m^2/W]
@@ -112,13 +112,13 @@ using PyPlot
 # ----------------- SET SIMULATION GRID ----------------------------
 
     # simulation grid parameters
-    λlims = (900e-9, 1150e-9) #(600e-9, 1500e-9) #(700e-9, 1400e-9) # # wavelength range of interest [m]
-    trange = 2e-12 #5*τ #10*τ #300.0e-15 #0.05e-12    # total extent of time window required [s] (NOTE: if this is too short, the range is extended automatically
+    λlims = (700e-9, 1400e-9) #(600e-9, 1500e-9) #(700e-9, 1400e-9) # # wavelength range of interest [m]
+    trange = 5*τ #2e-12 #5*τ #10*τ #300.0e-15 #0.05e-12    # total extent of time window required [s] (NOTE: if this is too short, the range is extended automatically
     Nz = 201                            # number of points along z at which the spectrum is saved
 
     # Hankel transformation
-    R_Hankel = 5*wm #6e-3 #3.0*wm           # aperture radius for Hankel transform (assume field ≈0 for r>R ) [m]  
-    N_Hankel = 256 #64 #128 #256 #512 #1024             # sample size for Hankel tansform grid 
+    R_Hankel = 3*wm #6e-3 #3.0*wm           # aperture radius for Hankel transform (assume field ≈0 for r>R ) [m]  
+    N_Hankel = 128 #64 #128 #256 #512 #1024             # sample size for Hankel tansform grid 
 
     q = Hankel.QDHT(R_Hankel, N_Hankel, dim=2)                  # set up discrete Hankel transform matrix, transformation done along 2nd dimension 
     q_1D = Hankel.QDHT(R_Hankel, N_Hankel, dim=1)               # to be applied to arrays that where integrated over ω, so r becomes 1rst dimension
