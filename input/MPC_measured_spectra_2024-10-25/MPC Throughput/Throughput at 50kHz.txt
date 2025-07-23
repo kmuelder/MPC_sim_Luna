@@ -1,0 +1,2 @@
+Rep rate, Input (W), Output (W), %
+50kHz, 11.97W, 11.51, 96%
