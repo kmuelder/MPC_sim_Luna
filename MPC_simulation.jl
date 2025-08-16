@@ -37,7 +37,7 @@ using PyPlot
 
 # ----------------- SET OVERALL SIMULATION OPTIONS -----------------
     use_FROG = false             # whether to use a gaussian or a FROG reconstructed pulse from data as the input    
-    use_mirr_data = true        # whether to include the MPC mirror reflectivity and dispersion from given data
+    use_mirr_data = false        # whether to include the MPC mirror reflectivity and dispersion from given data
     use_taylor_disp = false     # whether to account for the MPC mirror dispersion via a Taylor expansion with coefficients defined below
     
     nl_mode_matching = false    # whether to adjust the MPC modematching to nonlinear focusing
@@ -52,35 +52,42 @@ using PyPlot
 
     res = 300       # resolution (dpi)
     smallval = 1.0e-50      # small value to add in plots where log10 is taken; 
-                            # otherwise empty spots appear in plots since PyPlot ignores data points which are 0, since log10(0) = -Inf
+                            # otherwise empty spots appear in plots since PyPlot ignores data points which are Inf, since log10(0) = -Inf
 
 # ----------------- SET PHYSICAL PARAMETERS -----------------
 
     # MPC PARAMETERS
-    Nrt = 15                        # number of round trips
+    Nrt = 5 #15                        # number of round trips
     Npass = 2*Nrt                # number of passes
     
-    R = 200e-3 #200e-3                      # mirror radius of curvature [m]
+    R = 300e-3 #200e-3 #200e-3                      # mirror radius of curvature [m]
     k = Nrt-2                       # for k->Nrt MPC operation is closest to the stability edge and wm is maximized, reducing mirror damage 
-    L = R*(1-cos(pi*k/Nrt)) #551e-3 #        # MPC cell length [m] (see Anne-Lise Viotti, Multi-pass cells for post-compression of ultrashort laser pulses, 2022, https://doi.org/10.1364/OPTICA.449225)
+    L = 551e-3 #290e-3 # #R*(1-cos(pi*k/Nrt)) #551e-3 #        # MPC cell length [m] (see Anne-Lise Viotti, Multi-pass cells for post-compression of ultrashort laser pulses, 2022, https://doi.org/10.1364/OPTICA.449225)
     C = L/R
 
     mtype = :spherical              # mirror type, either :spherical or :parabolic
     ϕm1 = [0,0,0,0]                 # mirror 1 dispersion expressed as a taylor expansion
     ϕm2 = [0,0,0,0]                 # mirror 2 dispersion expressed as a taylor expansion
     
-    pres = 1.5 #10e-10 #0.5 #1.5 #10e-10 #1.5    # gas pressure [bar]
-    gas = :Kr #:Xe #:Kr                       # gas type
+    pres = 3.0 #1.5 #10e-10 #0.5 #1.5 #10e-10 #1.5    # gas pressure [bar]
+    gas = :Xe #:Kr #:Xe #:Kr                       # gas type
+    use_n2 = false; 
+        n2 = 5.2e-23           # nonlinear refractive index [m^2/W]; if disabled Luna n2 is used
+        n2_pres = 1.0           # pressure [bar] at which n2 value was measured 
+    
     ion = true                     # if true: enable ionisation response, if false: disable ionisation 
     ion_model="PPT"                 # set to "ADK" or "PPT"; "ADK" is less accurate at low intensities but faster; "PPT" may crash at very high intensities
 
     # PULSE PARAMETERS
     λ0 = 1030e-9        # central wavelength [m]
-    τ = 150e-15 #350e-15 #150e-15         # pulse duration [s]; ignored if FROG spectrum is used
-    E_pulse = 250e-6 # 200e-6 #250e-6    # pulse energy [J]
-    #w0 = 150e-6         # beam waist at focus [m]      # instead calculated later
-    # M2 = 1.0           # beam quality                 # not yet implemented; how would you do that?
-    N0, n0, n2 = Tools.getN0n0n2(PhysData.wlfreq(λ0), gas; P=pres, T=PhysData.roomtemp)        # gas number density, linear and nonlinear refractive index [m^2/W]
+    τ = 350e-15 #300e-15 #350e-15 #150e-15         # pulse duration [s]; ignored if FROG spectrum is used
+    E_pulse = 200e-6 #150e-6 # 200e-6 #250e-6    # pulse energy [J]
+    
+    if use_n2 == true
+        N0, n0, _ = Tools.getN0n0n2(PhysData.wlfreq(λ0), gas; P=pres, T=PhysData.roomtemp)        # gas number density, linear and nonlinear refractive index [m^2/W]
+    else 
+        N0, n0, n2 = Tools.getN0n0n2(PhysData.wlfreq(λ0), gas; P=pres, T=PhysData.roomtemp)        # gas number density, linear and nonlinear refractive index [m^2/W]
+    end
     
     # calculate mode-matched beam waist for given MPC geometry
     if nl_mode_matching == true
@@ -98,7 +105,7 @@ using PyPlot
         #  or Marc Hanna, Nonlinear Optics in Multipass Cells, 2021. https://doi.org/10.1002/lpor.202100220 eq. 2&6)
         
         # beam waist in the focus
-        w0 = sqrt(R*λ0 * sqrt(C*(2-C)) /(2*pi))         # ! this value is used to define the gaussian beam in the beginning of the simulation
+        w0 = sqrt(R*λ0/(2*pi) * sqrt(C*(2-C)))         # ! this value is used to define the gaussian beam in the beginning of the simulation
         # w0 = sqrt(λ0*L * sqrt(2*R/L -1) /(2*pi))   #123.62e-6 #125e-6       # these two eq. for w0 should give the same value                                         
 
         # beam waist on the mirror
@@ -107,12 +114,12 @@ using PyPlot
     end
 
     # w0 = 123.57e-6 #123.62e-6 #122.915895e-6
-        
+    #w0 = 204.52086815397297e-6  
 
 # ----------------- SET SIMULATION GRID ----------------------------
 
     # simulation grid parameters
-    λlims = (700e-9, 1400e-9) #(600e-9, 1500e-9) #(700e-9, 1400e-9) # # wavelength range of interest [m]
+    λlims = (950e-9, 1100e-9) #(700e-9, 1400e-9) #(600e-9, 1500e-9) #(700e-9, 1400e-9) # # wavelength range of interest [m]
     trange = 5*τ #2e-12 #5*τ #10*τ #300.0e-15 #0.05e-12    # total extent of time window required [s] (NOTE: if this is too short, the range is extended automatically
     Nz = 201                            # number of points along z at which the spectrum is saved
 
@@ -145,14 +152,23 @@ using PyPlot
         ionrate = Ionisation.ionrate_fun!_PPTcached(gas, λ0)        # set gas ionisation rate (PPT)
     end 
 
+    # use either user defined or Luna n2
+    if use_n2 == true
+        dens_n2 = PhysData.density(gas, n2_pres)
+        χ3 = 4/3 * PhysData.ε_0*PhysData.c * n2 * n0^2  # n0 could also be discarded here since n0 ≈ 1
+        γ3 = χ3/dens_n2
+    else
+        γ3 = PhysData.γ3_gas(gas)
+    end
+
     # nonlinear response function
     if ion == true  
         # with ionisation and Kerr effect
-        responses = (Nonlinear.Kerr_field(PhysData.γ3_gas(gas)),     
+        responses = (Nonlinear.Kerr_field(γ3),     
                     Nonlinear.PlasmaCumtrapz(grid.to, grid.to, ionrate, ionpot),)  
     elseif ion == false   
         # just Kerr effect
-        responses = (Nonlinear.Kerr_field(PhysData.γ3_gas(gas)),)    
+        responses = (Nonlinear.Kerr_field(γ3),)    
     end 
 
 # ---------------- PREPARE LUNA SIMULATION -------------------
@@ -398,7 +414,6 @@ open(joinpath(out_path,"params.txt"), "w") do file
     write(file, "E_pulse    = $(E_pulse)\n")
     write(file, "w0         = $(w0)\n")
     write(file, "wm         = $(wm)\n")
-    # write(file, "M2         = $(M2)\n")  
     # write(file, "σ          = $(σ)\n")
     if use_FROG == true
         write(file, "pulse shape    = from FROG reconstruction\n") 
@@ -457,7 +472,6 @@ params = Dict(
     "E_pulse" => E_pulse,
     "w0" => w0,
     "wm" => wm,
-    # "M2" => M2,
     # "σ" => σ,
     "L" => L,
     "R" => R,
